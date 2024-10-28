@@ -2,6 +2,7 @@ export ZOPEN_GIT_URL="https://github.com/folkertvanheusden/multitail.git"
 export ZOPEN_GIT_DEPS="ncurses make zoslib"
 export ZOPEN_TARBALL_URL="https://www.vanheusden.com/multitail/multitail-5.2.8.tgz"
 export ZOPEN_TARBALL_DEPS="ncurses make zoslib"
+export ZOPEN_CATEGORIES="utilities"
 export ZOPEN_TYPE="TARBALL"
 
 zopen_check_results()
