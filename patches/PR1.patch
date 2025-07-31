@@ -1,0 +1,130 @@
+diff --git a/makefile.zos b/makefile.zos
+new file mode 100644
+index 0000000..c10480f
+--- /dev/null
++++ b/makefile.zos
+@@ -0,0 +1,47 @@
++include version
++
++CONFIG_FILE=$(DESTDIR)/etc/multitail.conf
++
++DEBUG=#-g -D_DEBUG #-pg #-fprofile-arcs
++MYCFLAGS=-DVERSION=\"$(VERSION)\" $(DEBUG) -DCONFIG_FILE=\"$(CONFIG_FILE)\"
++
++OBJS=utils.o mt.o error.o my_pty.o term.o scrollback.o help.o mem.o cv.o selbox.o stripstring.o color.o misc.o ui.o exec.o diff.o config.o cmdline.o globals.o history.o clipboard.o
++
++all: multitail
++
++multitail: $(OBJS)
++	$(CC) $(OBJS) $(LDFLAGS) -o multitail  $(LIBS)
++
++%.o: %.c
++	$(CC) $(CFLAGS) $(CPPFLAGS) $(MYCFLAGS) -c -o $@ $<
++
++install: multitail
++	install -d $(DESTDIR)/bin
++	install -m 755 multitail $(DESTDIR)/bin/multitail
++	install -d $(DESTDIR)/share/man/man1
++	install -m 644 multitail.1 $(DESTDIR)/share/man/man1/multitail.1
++	install -d $(DESTDIR)/etc
++	install -m 644 multitail.conf $(DESTDIR)/etc/multitail.conf.new
++	install -d $(DESTDIR)/share/doc/multitail-$(VERSION)
++	install -m 644 *.txt INSTALL manual*.html $(DESTDIR)/share/doc/multitail-$(VERSION)
++	# +-=-------------------------------------------------------------=-+
++	# | There's a mailinglist!                                          |
++	# | Send an e-mail to minimalist@vanheusden.com with in the subject |
++	# | 'subscribe multitail' to subscribe.                             |
++	# +-=-------------------------------------------------------------=-+
++	#
++	# you might want to run 'make thanks' now :-)
++	#
++	# http://www.vanheusden.com/wishlist.php
++
++uninstall: clean
++	rm -f $(DESTDIR)/usr/bin/multitail
++	rm -f $(DESTDIR)/usr/share/man/man1/multitail.1.gz
++	rm -f $(DESTDIR)/etc/multitail.conf
++	rm -rf $(DESTDIR)/usr/share/doc/multitail-$(VERSION)
++
++clean:
++	rm -f $(OBJS) multitail core
++
++thanks:
++	echo Automatic thank you e-mail for multitail $(VERSION) on a `uname -a` | mail -s "multitail $(VERSION)" folkert@vanheusden.com
+diff --git a/mt.c b/mt.c
+index 39a5c17..fb46423 100644
+--- a/mt.c
++++ b/mt.c
+@@ -23,7 +23,7 @@
+ #include <glob.h>
+ #include <sys/ioctl.h>
+ #include <sys/stat.h>
+-#ifndef AIX
++#if !defined(AIX) && !defined(__MVS__)
+ #if defined(__FreeBSD__)
+ #include <termios.h>
+ #else
+@@ -2443,6 +2443,7 @@ void version(void)
+ 
+ void init_check_for_mail(void)
+ {
++#ifndef __MVS__
+ 	if (check_for_mail > 0 && mail_spool_file != NULL)
+ 	{
+ 		if (stat64(mail_spool_file, &msf_info) == -1)
+@@ -2452,7 +2453,7 @@ void init_check_for_mail(void)
+ 			printf("Could not determine size of file '%s' (which is supposed to be ", mail_spool_file);
+ 			printf("your mailfile): mail-check is disabled.\n");
+ 			printf("You can prevent this message by adding the line 'check_mail:0' ");
+-			printf("in "CONFIG_FILE" or in .multitailrc in your home-directory.\n\n");
++			printf("in CONFIG_FILE or in .multitailrc in your home-directory.\n\n");
+ 			printf("Press enter to continue...");
+ 			fflush(NULL);
+ 			getchar();
+@@ -2463,6 +2464,7 @@ void init_check_for_mail(void)
+ 			msf_last_check = get_ts();
+ 		}
+ 	}
++#endif
+ }
+ 
+ void main_loop(void)
+diff --git a/mt.h b/mt.h
+index f6c37a0..b86e7ed 100644
+--- a/mt.h
++++ b/mt.h
+@@ -102,7 +102,7 @@ typedef enum { SCHEME_TYPE_EDIT = 0, SCHEME_TYPE_FILTER } filter_edit_scheme_t;
+ 	#define getmaxyx(w,y,x) y = w->_maxy;  x = w->_maxx
+ #endif
+ 
+-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__) || defined(__CYGWIN__) || defined(__minix)
++#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__) || defined(__CYGWIN__) || defined(__minix) || defined(__MVS__)
+ #define off64_t off_t
+ #define stat64 stat
+ #define open64 open
+diff --git a/my_pty.c b/my_pty.c
+index 01e54be..00a0bde 100644
+--- a/my_pty.c
++++ b/my_pty.c
+@@ -78,7 +78,7 @@
+ 
+ int get_pty_and_fork(int *fd_master, int *fd_slave)
+ {
+-#if defined(__FreeBSD__) || defined(linux) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__) || defined(__CYGWIN__) || defined(__GNU__) || defined(__GLIBC__) || defined(__minix)
++#if defined(__FreeBSD__) || defined(linux) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__) || defined(__CYGWIN__) || defined(__GNU__) || defined(__GLIBC__) || defined(__minix) || defined(__MVS__)
+ 
+ 	if (openpty(fd_master, fd_slave, NULL, NULL, NULL) == -1)
+ 	{
+diff --git a/term.c b/term.c
+index 78d6767..83ad771 100644
+--- a/term.c
++++ b/term.c
+@@ -15,7 +15,7 @@
+ #if defined(sun) || defined(__sun)
+ #include <stropts.h>
+ #endif
+-#ifndef AIX
++#if !defined(AIX) && !defined(__MVS__)
+ #if defined(__FreeBSD__)
+ #include <termios.h>
+ #else
